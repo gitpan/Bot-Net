@@ -8,21 +8,16 @@ use Bot::Net::Mixin;
 use POE qw/ Component::IRC::State /;
 use Scalar::Util qw/ reftype /;
 
-require Exporter;
-push our @ISA, 'Exporter';
-
-our @EXPORT = ();
-
 =head1 NAME
 
 Bot::Net::Mixin::Bot::IRC - mixin class for building IRC bots
 
 =head1 SYNOPSIS
 
-        $userhost, $channel, $message);
   # Build an Eliza chatbot for IRC
   use strict;
   use warnings;
+  package MyBotNet::Bot::Eliza;
 
   use Bot::Net::Bot;
   use Bot::Net::Mixin::Bot::IRC;
@@ -63,6 +58,38 @@ sub setup {
     $brain->remember(
         [ 'irc' ] => POE::Component::IRC::State->spawn( alias => 'irc' )
     );
+}
+
+=head2 default_configuration PACKAGE
+
+Returns a base configuration for an IRC bot.
+
+=cut
+
+sub default_configuration {
+    my $class   = shift;
+    my $package = shift;
+
+    my $name = Bot::Net->short_name_for_bot($class);
+    $name =~ s/\W+/_/g;
+
+    my $default_channel = Bot::Net->config->net('ApplicationName');
+    $default_channel =~ s/\W+/_/g;
+
+    return {
+        irc_connect => {
+            nick     => $name,
+            username => lc $name,
+            ircname  => Bot::Net->short_name_for_bot($class),
+
+            server   => 'localhost',
+            port     => 6667,
+
+            flood    => 1,
+        },
+        
+        channels => [ '#'.$default_channel ],
+    };
 }
 
 =head1 BOT STATES
@@ -441,6 +468,20 @@ on reply_to_general => run {
     else {
         yield send_to => $event->sender_nick => $message;
     }
+};
+
+=head2 on bot quit
+
+This causes the IRC client to close down the connection and quit.
+
+=cut
+
+on bot_quit => run {
+    recall('log')->warn("Quitting the IRC connection.");
+    post irc => quit => 'Quitting.';
+
+    post irc => unregister => 'all';
+    forget 'irc';
 };
 
 =head1 AUTHORS
