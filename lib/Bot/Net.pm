@@ -4,7 +4,7 @@ use warnings;
 package Bot::Net;
 use base qw/ Class::Data::Inheritable /;
 
-our $VERSION = '0.0.4';
+our $VERSION = '0.1.0';
 
 use Bot::Net::Config;
 use Bot::Net::Log;
@@ -132,7 +132,8 @@ See L<Bot::Net::Log>.
 sub log {
     my $class = shift;
     my $self  = $class->bot_net;
-    my $name  = shift || 'Bot::Net';
+    my $name  = shift || eval { Bot::Net->config->net('ApplicationClass') } 
+                      || 'Bot::Net';
 
     if (not defined $self->{log}) {
         $self->{log} = Bot::Net::Log->new;
